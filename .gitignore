@@ -1,0 +1,6 @@
+.Rhistory
+*.Rproj*
+.Rproj.user
+data/*
+temp/*
+ml-10M100K
