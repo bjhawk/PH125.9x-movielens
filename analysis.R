@@ -259,7 +259,7 @@ recoTuningResults <- recommender$tune(
     niter = 100,
     nfold = 5,
     nbin = 25,
-    nThreads = nThreads
+    nthread = nThreads
   )
 )
 message("Tuning process timing: ", (proc.time() - timer))
