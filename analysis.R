@@ -138,7 +138,7 @@ loss <- function(observations, predictions) {
 ## You should never try to use more threads than your processor
 ## has to offer.
 ########################################
-nThreads <- 4
+nThreads <- 16
 
 ########################################
 ## Data analysis - Naive Baseline (rating = mu)
