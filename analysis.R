@@ -262,7 +262,7 @@ recoTuningResults <- recommender$tune(
     nthread = nThreads
   )
 )
-message("Tuning process timing: ", (proc.time() - timer))
+message("Tuning process timing: ", (proc.time() - timer)[3], " seconds")
 remove(timer)
 
 # The best-tuned opts can be shown here
@@ -270,6 +270,9 @@ recoTuningResults$min
 
 # Train the algorithm with the best-case tuning parameters
 recommender$train(trainingObject, opts = recoTuningResults$min)
+
+# clear up some memory
+remove(recoTuningResults)
 
 #############
 # Check this model's loss against the testing dataset.
@@ -287,9 +290,9 @@ recosystem.predictions = recommender$predict(testingObject, out_memory())
 
 loss(
   recosystem.predictions,
-  testing[, list(rating = rating + mu + mMu + uMu)]$rating
+  testing$rating
 )
-# We achieve 0.8211413 as a loss!
+# 0.8218481
 
 # cleanup
 remove(recosystem.predictions, testingObject, trainingObject)
@@ -403,6 +406,9 @@ binData$bin <- cumsum(binData$N) %/% (ceiling(sum(binData$N) / nBins)) + 1
 setkey(binData, userId)
 training <- binData[training]
 
+# remove an unnecessary column for memory's sake
+training[, N := NULL]
+
 # cleanup
 remove(binData)
 
@@ -413,7 +419,7 @@ if (!dir.exists("./temp")) {
 }
 
 # And clear it out from any previous run of this script
-file.remove(list.files("./temp", full.names = TRUE))(list.files("./temp", full.names = TRUE))
+file.remove(list.files("./temp", full.names = TRUE))
 
 # Set up a progress bar so that this long-running process can give
 # the user some feedback as to its status.
@@ -440,7 +446,7 @@ registerDoSNOW(cl)
 noop <- function(...) {}
 
 # The heart of our parallelization of Slope One.
-# This wil spin up a new thread for each bin, sending the
+# This will spin up a new thread for each bin, sending the
 # appropriate data to the slopeone method, and writing the results
 # directly to a csv file in the /temp/ directory we created. Upon
 # completion, each thread will call the noop function (doing nothing).
@@ -461,14 +467,14 @@ foreach(
 
   # calculate and write this data to the file
   write.table(
-    slopeone(training[binIndex, .(userId, movieId, rating)]),
+    slopeone(training[bin == binIndex, .(userId, movieId, rating)]),
     filePath,
     sep = ",",
     row.names = FALSE,
     na = ""
   )
 }
-message("processing slopeone: ", (proc.time() - timer))
+message("processing slopeone: ", (proc.time() - timer)[3], " seconds")
 remove(timer)
 
 # Stop the SOCK threads and close the stream to the progress bar
@@ -512,7 +518,7 @@ for (filePath in list.files("./temp/", full.names = TRUE)) {
   progressBarStatus <- progressBarStatus + 1
   setTxtProgressBar(progressBar, progressBarStatus)
 }
-message("Aggregate slopeone model: ", (proc.time() - timer))
+message("Aggregate slopeone model: ", (proc.time() - timer)[3], " seconds")
 remove(timer)
 # Cleanup, garbage collect, etc.
 close(progressBar)
@@ -570,7 +576,7 @@ predictions <- foreach(
     )
   )
 }
-message("Predict slopeone testing: ", (proc.time() - timer))
+message("Predict slopeone testing: ", (proc.time() - timer)[3], " seconds")
 remove(timer)
 # Stop the threads, cleanup, garbage collect
 stopCluster(cl)
@@ -699,7 +705,7 @@ predictions <- foreach(
     )
   )
 }
-message("Predict slopeone validation: ", (proc.time() - timer))
+message("Predict slopeone validation: ", (proc.time() - timer)[3], " seconds")
 remove(timer)
 # Stop clusters, clean up, garbage collect
 stopCluster(cl)
