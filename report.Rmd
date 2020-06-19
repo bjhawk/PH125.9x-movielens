@@ -4,7 +4,7 @@ author: "Brendan Hawk"
 date: "2020-06-01"
 output: 
   pdf_document: 
-    toc: yes
+    toc: no
 ---
 
 ```{r setup, include=FALSE}
@@ -94,7 +94,7 @@ theme_set(theme_classic())
 
 # Introduction
 
-In 1992, computer and data scientists John Riedl[^1] and Paul Resnick [^2] began work implementing what was to become known as GroupLens[^3] - a recommender system computing predicted ratings of Usenet news articles. This became the foundation for the research lab of the same name at the Department of Computer Science and Engineering at the University of Minnesota[^4]. This lab went on to publish the MovieLnes datasets - a set of now-ubiquitous dataset comprised of "26,000,000 ratings and 750,000 tags applied to 45,000 movies by 270,000 users"[^5].
+In 1992, computer and data scientists John Riedl[^1] and Paul Resnick [^2] began work implementing what was to become known as GroupLens[^3] - a recommender system computing predicted ratings of Usenet news articles. This became the foundation for the research lab of the same name at the Department of Computer Science and Engineering at the University of Minnesota[^4]. This lab went on to publish the MovieLens datasets - a set of now-ubiquitous dataset comprised of "26,000,000 ratings and 750,000 tags applied to 45,000 movies by 270,000 users"[^5].
 
 In this report, the MovieLens 10M Dataset - so named for being 10 million records long - will be used to predict ratings of movies for given users. Predicting how much a given person will like a given product is not a novel concept. As long as there has been an economy of trade, people have needed to find ways to predict that market's response to new things in order to maximize profits. The more accurately these predictions can be made, the more successful the product or service can be. On a technical level, the goal here is to generate models that minimize the difference between the predicted ratings against known ratings for a given set of movies and users. In the real world the models generated would be applied to sets of data where the rating is unknown.
 
@@ -107,7 +107,7 @@ In this report, the MovieLens 10M Dataset - so named for being 10 million record
 # Analysis
 ## The Data
 
-The data used in this analysis comes from the MovieLens 10M dataset, and has already been separated into a training dataset named `edx` and a validation dataset named `validation`. The ` dataset will not be touched until the very end, where it will be used to take a final measurement of the accuracy of our models. Some summary views of the data can demonstrate how the training dataset came out of the split:
+The data used in this analysis comes from the MovieLens 10M dataset, and has already been separated into a training dataset named `edx` and a validation dataset named `validation`. The `validation` dataset will not be touched until the very end, where it will be used to take a final measurement of the accuracy of our models. Some summary views of the data can demonstrate how the training dataset came out of the split:
 
 ```{r explore_summary}
 edx[
@@ -402,7 +402,7 @@ As expected, this does not perform well. It does give us a baseline to measure f
 
 #### Modeling Movie and User Effects
 
-A common approach to analysing this dataset is to model the effects of accounting for a given movie's average rating, or accounting for a given user's average rating on any movie. To put it simply, we can begin to answer the questions "Does the average rating for a movie help predict how a given user will feel about it?" and "Does how a given user feels about movies in general help predict how they will feel about a specific movie?". These questions are similarly naive approaches, however they are increasingly specific and can therefor begin to have a finer-grained sensitivity and yield better predictions.
+A common approach to analysing this dataset is to model the effects of accounting for a given movie's average rating, or accounting for a given user's average rating on any movie. To put it simply, we can begin to answer the questions "Does the average rating for a movie help predict how a given user will feel about it?" and "Does how a given user feels about movies in general help predict how they will feel about a specific movie?". These questions are similarly naive approaches, however they are increasingly specific and can therefore begin to have a finer-grained sensitivity and yield better predictions.
 
 To model these effects we start with the naive average, removing it from all ratings. Then we calculate each movie's average, and again remove it from all the ratings. Lastly, we perform the same step for each user's average. What is left can be described as a very specific residual measuring a single movie-user interaction.
 
@@ -596,7 +596,7 @@ As a measurement of accuracy, having our RMSE come out to `r loss(recosystem.pre
 
 #### Slope One Algorithm
 
-The extraordinary memory and time cost of matrix factorisation gave me a great deal of trouble when analysing this dataset. I went in search of other less costly approaches to apply and came across the Slope One algorithm[^9]. This is Collaborative Filtering approach - ie we will attempt to predict how a user feels about a movie by comparing the similarities and differences in how they feel about other movies to other users who have rated those other movies as well. The math behind this approach is astoundingly simple. The final model is calculated from a serious of average differences. For example, given the following data:
+The extraordinary memory and time cost of matrix factorisation gave me a great deal of trouble when analysing this dataset. I went in search of other less costly approaches to apply and came across the Slope One algorithm[^9]. This is Collaborative Filtering approach - ie we will attempt to predict how a user feels about a movie by comparing the similarities and differences in how they feel about other movies to other users who have rated those other movies as well. The math behind this approach is astoundingly simple. The final model is calculated from a series of average differences. For example, given the following data:
 
 | User Id | Movie Id | Rating |
 | - | - | - |
@@ -634,7 +634,7 @@ $$Prediction_{U3,M2} = \frac{(Rating_{U3,M1} + b_{M1}) * support_{M1}}{ support_
 
 With the given example values:
 
-$$Prediction_{U3,M2} = ((4 + -0.75) * 2) / 2 = 3.25$$
+$$Prediction_{U3,M2} = \frac{(4 + -0.75) * 2}{2} = 3.25$$
 
 In this application of Slope One, we still have the same issues with the size of our data. Similarly to the internals of Recosystem and LIBMF, I implemented Slope One for this dataset in a way that it can be done in chunks of data in parallel. This drastically reduced the memory overhead, and the final model was calculated in only a few hours. Each thread will process it's respective part of the model, then write to a temporary file. These files are re-aggregated after all of the data is processed into these temporary files.
 
@@ -824,7 +824,7 @@ predictions <- foreach(
 }
 ```
 
-Normally at this point we could calculate the RMSE without adding the Mu, movie, and user effects. However, it is entirely possible that the Slope One model has generated `NA` as a prediction in some cases. As explained in the model function, this comes from an instance where there is no combination of data to line up for a given user/movie and therefor no inference can be performed. In this case, we will have to fall back on a different method. Here I have chosen to use the Naive model + Movie and User effects for simplicity's sake.
+Normally at this point we could calculate the RMSE without adding the Mu, movie, and user effects. However, it is entirely possible that the Slope One model has generated `NA` as a prediction in some cases. As explained in the model function, this comes from an instance where there is no combination of data to line up for a given user/movie and therefore no inference can be performed. In this case, we will have to fall back on a different method. Here I have chosen to use the Naive model + Movie and User effects for simplicity's sake.
 
 ```{r loss_of_testing_predictions_slopeone, eval=FALSE}
 predictions[
@@ -943,6 +943,6 @@ In summary, we can attest that the hardest part of these predictions may well ha
 
 We can also conclude that Matrix Decomposition is an incredibly powerful and accurate tool for the job. Had I been running this on a machine with unlimited RAM and power, I would never have had to look for anything further. It is likely I would have spent far more time doing very fine-grained tuning on that model and seeing just how low my RMSE could get. However, the fact that Slope One came as close as it did, and is such an easy-to-implement and flexible approach, was well worth the exploration my hardware limitations forced me to do.
 
-I intend to keep exploring ways of honing the code behind my Slope One implementation, and have been considering creating an appropriate model package for Caret[^10] so that others can use it as well. There still remains the challenge of being able to use it more flexibly - letting potential consumers of that package to change between in-memory and write-to-file approaches easily and without a lot of need to understand the code behind it. Regardless, the algorithm has been well worth learning and has proven that not all Machine Learning needs to be mathematically complex!
+I intend to keep exploring ways of honing the code behind my Slope One implementation, and have been considering creating an appropriate model package for Caret[^10] so that others can use it as well. There still remains the challenge of being able to use it more flexibly - allowing potential consumers of that package to change between in-memory and write-to-file approaches easily and without a lot of need to understand the code behind it. Regardless, the algorithm has been well worth learning and has proven that not all Machine Learning needs to be mathematically complex!
 
 [^10]: https://topepo.github.io/caret/
