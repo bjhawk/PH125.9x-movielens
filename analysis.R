@@ -487,13 +487,13 @@ remove(progressBar, updateProgress, cl, noop, slopeone)
 gc()
 
 # Now we have to aggregate all the model data into one final model.
-# This is done by reading the data into our model, and then "re-averaging"
-# the values of b. Since an average is dependent on it's divisor
-# (in this case, the support value) we can mathematically aggregate these means by
-# multiplying them by their support, and taking a new mean with the sum of
-# all the supports for that average.
-
-# This process is very RAM heavy and due to the size of the vecotrs involved it takes
+# This is done by reading the data from each temp file into our model,
+# and then "re-averaging" the values of b. Since an average is dependent on 
+# it's divisor (in this case, the support value) we can mathematically 
+# aggregate these means by multiplying them by their support, and taking 
+# a new mean with the sum of all the supports for that average.
+#
+# This process is very RAM heavy and due to the size of the vectors involved it takes
 # even longer than calculating the models in the first place.
 # In practice this took about an hour.
 
@@ -526,6 +526,9 @@ cl <- makeSOCKcluster(maxcombine)
 registerDoSNOW(cl)
 
 timer <- proc.time()
+
+# This will read up to `maxcombine` files at a time in parallel, and then call
+# the function above to aggregate and re-average them into one model.
 slopeone.model <- foreach(
   binIndex = 1:nBins,
   .packages = c("data.table", "dplyr", "dtplyr"),
